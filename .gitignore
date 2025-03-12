@@ -1,1 +1,4 @@
-/vendor
+# /vendor
+**/imgui-docking
+CMakeLists.txt
+README.MD
