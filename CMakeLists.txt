@@ -31,27 +31,19 @@ endif()
 #--------------------------------------------------------------------
 
 set(SDLTEM_EXE_NAME ${PROJECT_NAME} CACHE STRING "Base name of executable output name")
-set(SDLTEM_LIB_NAME ${PROJECT_NAME} CACHE STRING "Base name of library output name")
-
-set(SDLTEM_TESTS_DIR "tests")
-
-set(SDLTEM_SOURCE_FILES "src/main.cpp")
 
 set(SDLTEM_EXE_TARGET_NAME  ${SDLTEM_EXE_NAME})
-set(SDLTEM_LIB_TARGET_NAME  ${SDLTEM_LIB_NAME})
 
 option(SDLTEM_ENABLE_DEBUG "Enable debug build" OFF)
-option(SDLTEM_ENABLE_WARNINGS "Enable compiler warnings" OFF)
+option(SDLTEM_PRODUCTION_BUILD "Make this a production build!" OFF)
 option(SDLTEM_BUILD_TESTS "Build the ${PROJECT_NAME} test programs" ${SDLTEM_IS_TOP_LEVEL})
+option(SDLTEM_ENABLE_DOXYGEN "Build documentation with Doxygen." ${SDLTEM_IS_TOP_LEVEL})
+option(SDLTEM_ENABLE_WARNING "Enable warning messages." ${SDLTEM_IS_TOP_LEVEL})
 
 # Set required C/C++ standard
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_EXTENTIONS OFF)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
-
-set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
-
-include_directories("." "./include" "vendor/imgui" "vendor/sdl/include")
 
 #--------------------------------------------------------------------
 # Apply Microsoft C runtime library option
@@ -95,14 +87,19 @@ endif()
 # Add Subdirectories
 #--------------------------------------------------------------------
 
-# Add the subdirectories for the libraries
+# Build vendor libraries
 add_subdirectory(vendor)
+
+# Build the documentation   
+if(SDLTEM_ENABLE_DOXYGEN)
+    add_subdirectory(docs)
+endif()
 
 # Build the test apps   
 if(SDLTEM_BUILD_TESTS)
     include(CTest)
     enable_testing()
-    add_subdirectory(${SDLTEM_TESTS_DIR})
+    add_subdirectory(tests)
 
     # Set the unit test app project as the Visual Studio startup project
     # if the target compiler is some version of Microsoft Visual C++ and
@@ -116,15 +113,20 @@ endif()
 # Build targets
 #--------------------------------------------------------------------
 
+include_directories("." "./include" "vendor/imgui" "vendor/sdl/include")
+
+set(SDLTEM_SOURCE_FILES "src/main.cpp")
 
 # Add executable
-add_executable("${SDLTEM_EXE_TARGET_NAME}" "src/main.cpp")
+add_executable("${SDLTEM_EXE_TARGET_NAME}" ${SDLTEM_SOURCE_FILES})
+target_link_libraries("${SDLTEM_EXE_TARGET_NAME}" PRIVATE imgui SDL3-static)
 
-if (CMAKE_VERSION VERSION_GREATER 3.12)
-  set_property(TARGET "${SDLTEM_EXE_TARGET_NAME}" PROPERTY CXX_STANDARD 20)
+if(SDLTEM_PRODUCTION_BUILD)
+	# setup the ASSETS_PATH macro to be in the root folder of your exe
+	target_compile_definitions("${SDLTEM_EXE_TARGET_NAME}" PUBLIC ASSETS_PATH="./assets/") 
+	target_compile_definitions("${SDLTEM_EXE_TARGET_NAME}" PUBLIC PRODUCTION_BUILD=1) 
+else()
+	# This is useful to get an ASSETS_PATH in your IDE during development
+	target_compile_definitions("${SDLTEM_EXE_TARGET_NAME}" PUBLIC ASSETS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/assets/")
+	target_compile_definitions("${SDLTEM_EXE_TARGET_NAME}" PUBLIC PRODUCTION_BUILD=0) 
 endif()
-
-
-target_link_libraries("${CMAKE_PROJECT_NAME}" PRIVATE imgui SDL3-static)
-
-# Add Library
